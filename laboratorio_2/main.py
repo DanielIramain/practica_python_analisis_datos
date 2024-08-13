@@ -69,13 +69,21 @@ def eliminar_colaborador_por_dni(gestion):
 
 def mostrar_todos_los_colaboradores(gestion):
     print('=============== Listado completo de los  Colaboradores ==============')
-    for colaborador in gestion.leer_datos().values():
-        if 'departamento' in colaborador:
-            print(f"{colaborador['nombre']} - Departamento {colaborador['departamento']}")
-        else:
-            print(f"{colaborador['nombre']} - Horas Semanales {colaborador['horas_semanales']}")
+    try:
+        colaboradores = gestion.leer_todos_los_colaboradores()
+        for colaborador in colaboradores:
+            if isinstance(colaborador, ColaboradorTiempoCompleto):
+                print(f'{colaborador.dni} {colaborador.apellido} {colaborador.departamento}')
+            elif isinstance(colaborador, ColaboradorTiempoParcial):
+                print(f'{colaborador.dni} {colaborador.apellido} {colaborador.horas_semanales}')
+
+    except Exception as e:
+        print(f'Error al mostrar los colaboradores {e}')
+
+
     print('=====================================================================')
     input('Presione enter para continuar...')
+
 
 if __name__ == "__main__":
     gestion = GestionColaboradores()

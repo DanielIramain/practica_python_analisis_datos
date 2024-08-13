@@ -205,7 +205,6 @@ class GestionColaboradores:
         except Exception as error:
             print(f'Error inesperado al crear colaborador: {error}')
 
-
     def leer_colaborador(self, dni):
         try:
             connection = self.connect()
@@ -222,7 +221,7 @@ class GestionColaboradores:
                             colaborador_data['departamento'] = departamento['departamento']
                             colaborador = ColaboradorTiempoCompleto(**colaborador_data)
                         else:
-                            cursor.execute('SELECT horas_semanales FROM colaboradortiemp    oparcial WHERE dni = %s', (dni,))
+                            cursor.execute('SELECT horas_semanales FROM colaboradortiempoparcial WHERE dni = %s', (dni,))
                             horas_semanales = cursor.fetchone()
                             if horas_semanales:
                                 colaborador_data['horas_semanales'] = horas_semanales['horas_semanales']
@@ -242,25 +241,95 @@ class GestionColaboradores:
                 connection.close()
 
     def actualizar_colaborador(self, dni, nuevo_salario):
+        '''Actualizar el salario de un colaborador en al base de datos'''
         try:
-            datos = self.leer_datos()
-            if str(dni) in datos.keys():
-                 datos[dni]['salario'] = nuevo_salario
-                 self.guardar_datos(datos)
-                 print(f'Salario actualizado para el colalborador DNI:{dni}')
-            else:
-                print(f'No se encontró colaborador con DNI:{dni}')
+            connection = self.connect()
+            if connection:
+                with connection.cursor() as cursor:
+                    # Verificar si el DNI existe
+                    cursor.execute('SELECT * FROM colaboradores WHERE dni = %s', (dni,))
+                    if not cursor.fetchone():
+                        print(f'No se encontro colaborador con DNI {dni}.')
+                        return
+                    
+                    # Actualizar salario
+                    cursor.execute('UPDATE colaboradores SET salario = %s WHERE dni = %s', (nuevo_salario, dni))
+
+                    if cursor.rowcount > 0:
+                        connection.commit()
+                        print(f'Salario actualizado para el colaborador con DNI: {dni}')
+                    else:
+                        print(f'no se encontró el colaborador con DNI: {dni}')
+
         except Exception as e:
             print(f'Error al actualizar el colaborador: {e}')
+        finally:
+            if connection.is_connected():
+                connection.close()
 
     def eliminar_colaborador(self, dni):
         try:
-            datos = self.leer_datos()
-            if str(dni) in datos.keys():
-                 del datos[dni]
-                 self.guardar_datos(datos)
-                 print(f'colalborador DNI:{dni} eliminado correctamente')
-            else:
-                print(f'No se encontró colaborador con DNI:{dni}')
+            connection = self.connect()
+            if connection:
+                with connection.cursor() as cursor:
+                   # Verificar si el DNI existe
+                    cursor.execute('SELECT * FROM colaboradores WHERE dni = %s', (dni,))
+                    if not cursor.fetchone():
+                        print(f'No se encontro colaborador con DNI {dni}.')
+                        return 
+
+                    # Eliminar el colaborador
+                    cursor.execute('DELETE FROM colaboradortiempocompleto WHERE dni = %s', (dni,))
+                    cursor.execute('DELETE FROM colaboradortiempoparcial WHERE dni = %s', (dni,))
+                    cursor.execute('DELETE FROM colaboradores WHERE dni = %s', (dni,))
+                    if cursor.rowcount > 0:
+                        connection.commit()
+                        print(f'Colaborador con DNI: {dni} eliminado correctamente')
+                    else:
+                        print(f'No se encontró colaborador con DNI: {dni}')
+
         except Exception as e:
             print(f'Error al eliminar el colaborador: {e}')
+        finally:
+            if connection.is_connected():
+                connection.close()
+
+    def leer_todos_los_colaboradores(self):
+        try:
+            connection = self.connect()
+            if connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute('SELECT * FROM colaboradores')
+                    colaboradores_data = cursor.fetchall()
+
+                    colaboradores = []
+                    
+                    for colaborador_data in colaboradores_data:
+                        dni = colaborador_data['dni']
+
+                        cursor.execute('SELECT departamento FROM colaboradortiempocompleto WHERE dni = %s', (dni,))
+                        departamento = cursor.fetchone()
+
+                        if departamento:
+                            colaborador_data['departamento'] = departamento['departamento']
+                            colaborador = ColaboradorTiempoCompleto(**colaborador_data)
+                        else:
+                            cursor.execute('SELECT horas_semanales FROM colaboradortiempoparcial WHERE dni = %s', (dni,))
+                            horas_semanales = cursor.fetchone()
+                            colaborador_data['horas_semanales'] = horas_semanales['horas_semanales']
+                            colaborador = ColaboradorTiempoParcial(**colaborador_data)
+
+                        colaboradores.append(colaborador)
+
+        except Exception as e:
+            print(f'Error al mostrar los colaboradores: {e}')
+        else:
+            return colaboradores
+        finally:
+            if connection.is_connected():
+                connection.close()
+
+
+
+
+
